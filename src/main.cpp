@@ -9,7 +9,7 @@ const char* SENSOR_VALUE_PATT 	= "recruitment/ciot/sensor1";
 const char* SENSOR_WAKEUP_PATT 	= "recruitment/ciot/wake";
 
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
-void log_result(int resultCode);
+void log_result(const char * subject, int resultCode);
 void connect_callback(struct mosquitto *mosq, void *userdata, int result);
 void draw(SDL_Renderer* renderer, float delta_time);
 int  main(int, char**);
@@ -34,8 +34,10 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	}
 }
 
-void log_result(int resultCode)
+void log_result(const char * subject, int resultCode)
 {
+	std::cout << subject;
+
 	switch( resultCode )
 	{
 		case MOSQ_ERR_SUCCESS:
@@ -52,32 +54,27 @@ void log_result(int resultCode)
 
 void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 {
-	std::cout << "Connected to broker: ";
-	log_result( result );
+	log_result( "Connected to broker: ", result );
 	
 	if(result == MOSQ_ERR_SUCCESS)
 	{
 		//Subscribe to broker information topics on successful connect.
 	
 		int res = mosquitto_subscribe(mosq, NULL, SENSOR_STATE_PATT, 2);
-		std::cout << "Connected to sensor state: ";
-		log_result( res );
+		log_result( "Connected to sensor state: ", res );
 
 		res = mosquitto_subscribe(mosq, NULL, SENSOR_VALUE_PATT, 2);
-		std::cout << "Connected to sensor value: ";
-		log_result( res );
+		log_result( "Connected to sensor value: ", res );
 
 	}
 }
 
 void wakeup_sensor(struct mosquitto *mosq)
 {
-	std::cout << "Waking up sensor...";
-
 	int payload 	= 1;
 	int payloadlen  = 1;
 	int qos 		= 2;
-	bool retain		= true;
+	bool retain		= true; // yes, retain the msg on the broker
 
 	int res = mosquitto_publish(mosq, 
 								NULL, 
@@ -87,13 +84,12 @@ void wakeup_sensor(struct mosquitto *mosq)
 								qos, 
 								retain 
 							  	);
-	log_result( res );
+	log_result( "Waking up sensor...", res );
 }
 
 void publish_callback(struct mosquitto *mosq, void *userdata, int result)
 {
-	std::cout << "Wakeup sent to sensor: ";
-	log_result( result );
+	log_result( "Wakeup sent to sensor: ", result );
 }
 
 //Draws a simple bar chart with a blue background in the center of the screen.
@@ -188,12 +184,6 @@ int main(int, char**)
 	{
 		t1 = SDL_GetTicks();
 		float delta_time = (float)(t1 - t0)/1000.f;
-
-		// check if the devices is sleeping at recruitment/ciot/state
-
-		// wake up the device at recruitment/ciot/wake = 1
-
-		// ask for the data at recruitment/ciot/sensor1
 
 		while( SDL_PollEvent( &e ) != 0)
 		{
