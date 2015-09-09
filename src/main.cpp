@@ -8,6 +8,10 @@ const char* SENSOR_STATE_PATT 	= "recruitment/ciot/state";
 const char* SENSOR_VALUE_PATT 	= "recruitment/ciot/sensor1";
 const char* SENSOR_WAKEUP_PATT 	= "recruitment/ciot/wake";
 
+// sensor status response
+const char* SENSOR_STATUS_SLEEP = "sleep";
+const char* SENSOR_STATUS_AWAKE = "awake";
+
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
 void log_result(const char * subject, int resultCode);
 void connect_callback(struct mosquitto *mosq, void *userdata, int result);
@@ -26,7 +30,12 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		}
 		else if(strcmp( message->topic, SENSOR_STATE_PATT) == 0 )
 		{
-			wakeup_sensor( mosq );
+			if( strcmp( (const char*)message->payload, SENSOR_STATUS_SLEEP ) == 0)
+			{
+				std::cout << "The sensor is sleeping" << std::endl;
+				wakeup_sensor( mosq );	
+			}
+			
 		}
 
 		//Data is binary, but we cast it to a string because we're crazy.
@@ -71,7 +80,6 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 
 void wakeup_sensor(struct mosquitto *mosq)
 {
-	int payload 	= 1;
 	int payloadlen  = 1;
 	int qos 		= 2;
 	bool retain		= true; // yes, retain the msg on the broker
@@ -80,7 +88,7 @@ void wakeup_sensor(struct mosquitto *mosq)
 								NULL, 
 								SENSOR_WAKEUP_PATT, 
 								payloadlen, 
-								&payload, 
+								"1",
 								qos, 
 								retain 
 							  	);
