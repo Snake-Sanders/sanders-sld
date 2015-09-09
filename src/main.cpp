@@ -3,7 +3,6 @@
 #include <mosquitto.h>
 #include <math.h>
 
-
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message)
 {
 	//Simply print the data to standard out.
@@ -14,13 +13,37 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	}
 }
 
+void connect_callback_log(int resultCode)
+{
+	switch( resultCode )
+	{
+		case MOSQ_ERR_SUCCESS:
+			std::cout << "OK" << std::endl;
+			break;
+		case MOSQ_ERR_INVAL:
+			std::cout << "Invalid parameter" << std::endl;
+			break;
+		default:
+			break;
+	}
+}
+
 void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 {
-	if(!result)
+	if(result == MOSQ_ERR_SUCCESS)
 	{
 		std::cout << "Connected to broker." << std::endl;
 		//Subscribe to broker information topics on successful connect.
 		mosquitto_subscribe(mosq, NULL, "$SYS/#", 2);
+		
+		int res = mosquitto_subscribe(mosq, NULL, "$SYS/recruitment/ciot/state", 2);
+		std::cout << "Connected to sensor state: ";
+		connect_callback_log( res );
+
+		res = mosquitto_subscribe(mosq, NULL, "recruitment/ciot/sensor1", 2);
+		std::cout << "Connected to sensor value: ";
+		connect_callback_log( res );
+
 	}
 	else
 	{
@@ -120,6 +143,12 @@ int main(int, char**)
 	{
 		t1 = SDL_GetTicks();
 		float delta_time = (float)(t1 - t0)/1000.f;
+
+		// check if the devices is sleeping at recruitment/ciot/state
+
+		// wake up the device at recruitment/ciot/wake = 1
+
+		// ask for the data at recruitment/ciot/sensor1
 
 		while( SDL_PollEvent( &e ) != 0)
 		{
