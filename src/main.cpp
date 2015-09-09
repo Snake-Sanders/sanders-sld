@@ -3,6 +3,12 @@
 #include <mosquitto.h>
 #include <math.h>
 
+void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
+void log_result(int resultCode);
+void connect_callback(struct mosquitto *mosq, void *userdata, int result);
+void draw(SDL_Renderer* renderer, float delta_time);
+int  main(int, char**);
+
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message)
 {
 	//Simply print the data to standard out.
@@ -13,7 +19,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 	}
 }
 
-void connect_callback_log(int resultCode)
+void log_result(int resultCode)
 {
 	switch( resultCode )
 	{
@@ -24,6 +30,7 @@ void connect_callback_log(int resultCode)
 			std::cout << "Invalid parameter" << std::endl;
 			break;
 		default:
+			std::cout << "Error:" << resultCode << std::endl;
 			break;
 	}
 }
@@ -34,15 +41,15 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 	{
 		std::cout << "Connected to broker." << std::endl;
 		//Subscribe to broker information topics on successful connect.
-		mosquitto_subscribe(mosq, NULL, "$SYS/#", 2);
-		
-		int res = mosquitto_subscribe(mosq, NULL, "$SYS/recruitment/ciot/state", 2);
+		//mosquitto_subscribe(mosq, NULL, "$SYS/#", 2);
+
+		int res = mosquitto_subscribe(mosq, NULL, "recruitment/ciot/state", 2);
 		std::cout << "Connected to sensor state: ";
-		connect_callback_log( res );
+		log_result( res );
 
 		res = mosquitto_subscribe(mosq, NULL, "recruitment/ciot/sensor1", 2);
 		std::cout << "Connected to sensor value: ";
-		connect_callback_log( res );
+		log_result( res );
 
 	}
 	else
@@ -51,6 +58,11 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 	}
 }
 
+void publish_callback(struct mosquitto *mosq, void *userdata, int result)
+{
+	std::cout << "Sensor wakeup sent: ";
+	log_result( result );
+}
 
 //Draws a simple bar chart with a blue background in the center of the screen.
 void draw(SDL_Renderer* renderer, float delta_time)
@@ -104,6 +116,7 @@ int main(int, char**)
 
 	mosquitto_connect_callback_set(mosq, connect_callback);
 	mosquitto_message_callback_set(mosq, message_callback);
+	mosquitto_publish_callback_set(mosq, publish_callback);
 
 	//Init SDL
 	if (SDL_Init(SDL_INIT_VIDEO) != 0){
