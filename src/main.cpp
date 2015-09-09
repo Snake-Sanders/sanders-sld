@@ -35,7 +35,6 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 				std::cout << "The sensor is sleeping" << std::endl;
 				wakeup_sensor( mosq );	
 			}
-			
 		}
 
 		//Data is binary, but we cast it to a string because we're crazy.
@@ -114,14 +113,14 @@ void draw(SDL_Renderer* renderer, float delta_time)
 
 
 	//Bars
-	int count = 6;
+	int barsCount = 6;
 	int padding = 2;
 	int start_x = 120;
 	int y = 340;
-	int width = (rect.w - (start_x - rect.x) * 2 - padding * (count - 1))/count;
+	int width = (rect.w - (start_x - rect.x) * 2 - padding * (barsCount - 1))/barsCount;
 
 	//Draw the bars with a simple sine-wave modulation on height and transparency.
-	for (int i = 0; i < count; ++i)
+	for (int i = 0; i < barsCount; ++i)
 	{
 		float offset = ((float)sin(time * 4 + i) + 1.0f)/2.f;
 		int height = offset * 20 + 20;
@@ -134,12 +133,13 @@ void draw(SDL_Renderer* renderer, float delta_time)
 
 int main(int, char**)
 {
-	SDL_Window *window = 0;
-	SDL_Renderer *renderer = 0;
-	int code = 0;
+	SDL_Window 	 *window 	= 0;
+	SDL_Renderer *renderer 	= 0;
 	struct mosquitto* mosq;
+	int code = 0;
 	bool run = true;
-	unsigned int t0 = 0, t1 = 0;
+	unsigned int t0 = 0;
+	unsigned int t1 = 0;
 	
 	mosquitto_lib_init();
 
