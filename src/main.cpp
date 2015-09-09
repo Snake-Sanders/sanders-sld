@@ -3,6 +3,11 @@
 #include <mosquitto.h>
 #include <math.h>
 
+// Sensor Patterns
+const char* SENSOR_STATE_PATT 	= "recruitment/ciot/state";
+const char* SENSOR_VALUE_PATT 	= "recruitment/ciot/sensor1";
+const char* SENSOR_WAKEUP_PATT 	= "recruitment/ciot/wake";
+
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
 void log_result(int resultCode);
 void connect_callback(struct mosquitto *mosq, void *userdata, int result);
@@ -37,24 +42,21 @@ void log_result(int resultCode)
 
 void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 {
+	std::cout << "Connected to broker: ";
+	log_result( result );
+	
 	if(result == MOSQ_ERR_SUCCESS)
 	{
-		std::cout << "Connected to broker." << std::endl;
 		//Subscribe to broker information topics on successful connect.
-		//mosquitto_subscribe(mosq, NULL, "$SYS/#", 2);
-
-		int res = mosquitto_subscribe(mosq, NULL, "recruitment/ciot/state", 2);
+	
+		int res = mosquitto_subscribe(mosq, NULL, SENSOR_STATE_PATT, 2);
 		std::cout << "Connected to sensor state: ";
 		log_result( res );
 
-		res = mosquitto_subscribe(mosq, NULL, "recruitment/ciot/sensor1", 2);
+		res = mosquitto_subscribe(mosq, NULL, SENSOR_VALUE_PATT, 2);
 		std::cout << "Connected to sensor value: ";
 		log_result( res );
 
-	}
-	else
-	{
-		std::cout << "Failed to connect to broker :(" << std::endl;
 	}
 }
 
