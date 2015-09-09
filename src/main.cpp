@@ -13,12 +13,22 @@ void log_result(int resultCode);
 void connect_callback(struct mosquitto *mosq, void *userdata, int result);
 void draw(SDL_Renderer* renderer, float delta_time);
 int  main(int, char**);
+void wakeup_sensor(struct mosquitto *mosq);
 
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message)
 {
 	//Simply print the data to standard out.
 	if(message->payloadlen)
 	{
+		if( strcmp( message->topic, SENSOR_VALUE_PATT) == 0 )
+		{
+
+		}
+		else if(strcmp( message->topic, SENSOR_STATE_PATT) == 0 )
+		{
+			wakeup_sensor( mosq );
+		}
+
 		//Data is binary, but we cast it to a string because we're crazy.
 		std::cout << message->topic << ": " << (const char*)message->payload << std::endl;
 	}
@@ -60,9 +70,29 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 	}
 }
 
+void wakeup_sensor(struct mosquitto *mosq)
+{
+	std::cout << "Waking up sensor...";
+
+	int payload 	= 1;
+	int payloadlen  = 1;
+	int qos 		= 2;
+	bool retain		= true;
+
+	int res = mosquitto_publish(mosq, 
+								NULL, 
+								SENSOR_WAKEUP_PATT, 
+								payloadlen, 
+								&payload, 
+								qos, 
+								retain 
+							  	);
+	log_result( res );
+}
+
 void publish_callback(struct mosquitto *mosq, void *userdata, int result)
 {
-	std::cout << "Sensor wakeup sent: ";
+	std::cout << "Wakeup sent to sensor: ";
 	log_result( result );
 }
 
