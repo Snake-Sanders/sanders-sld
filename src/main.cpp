@@ -37,8 +37,9 @@ typedef struct SensorStatus
 SensorStatus gSensorHistory[GRAPH_BARS_NUM];//!< Collection of sensor's status 
 
 static unsigned int currentStatusIdx = 0; 		//!< Index of the last status introduced in the history collection
-static bool isNewMeasurementStored = true;
-static int 	history_size = 0;
+static unsigned int history_size 	 = 0;
+static bool isNewMeasurementStored   = true;
+
 
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
 void log_result(const char * subject, int resultCode);
@@ -66,14 +67,15 @@ bool is_new_measurement_stored()
 
 void store_new_measurement( SensorStatus & newStatus)
 {
-	currentStatusIdx++;
-	history_size++;
-	// control circular buffer
+	
+	if( history_size < GRAPH_BARS_NUM)
+		history_size++;
 
+	// control circular buffer
+	currentStatusIdx++;
 	if( currentStatusIdx >= GRAPH_BARS_NUM)
 	{
 		currentStatusIdx = 0;
-		history_size 	 = GRAPH_BARS_NUM;
 	}
 		
 	gSensorHistory[currentStatusIdx] = newStatus;
@@ -107,7 +109,7 @@ SensorStatus & get_measurement( int posIndex )
 void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message)
 {
 	SensorStatus sensor;
-	std::cout << message->topic << "->" << (const char*)message->payload << std::endl;
+
 	//Simply print the data to standard out.
 	if(message->payloadlen > 0 && message->payload != 0)
 	{
@@ -151,7 +153,7 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		}
 
 		//Data is binary, but we cast it to a string because we're crazy.
-		std::cout << message->topic << ":: " << (const char*)message->payload << std::endl;
+		std::cout << message->topic << ":" << (const char*)message->payload << std::endl;
 		//std::cout << "raw message: " << (const char*)message->payload << std::endl;
 	}
 	
