@@ -97,11 +97,11 @@ SensorStatus & get_measurement( int posIndex )
 
 		if( targetIdx < 0 )
 		{
-			targetIdx = GRAPH_BARS_NUM - posIndex ;
+			targetIdx = GRAPH_BARS_NUM - targetIdx ;
 		}
 	}
 
-	//std::cout << "[" << currentStatusIdx << "]&[" << posIndex << "]=: " << targetIdx << std::endl;
+	//std::cout << currentStatusIdx << "-" << posIndex << "=" << targetIdx << std::endl;
 
 	return gSensorHistory[ targetIdx ];
 }
