@@ -8,9 +8,9 @@
 const unsigned int GRAPH_BARS_NUM = 10;
 
 // Sensor Patterns
-const char* SENSOR_STATE_PATT 	= "recruitment/ciot/state";
-const char* SENSOR_VALUE_PATT 	= "recruitment/ciot/sensor1";
-const char* SENSOR_WAKEUP_PATT 	= "recruitment/ciot/wake";
+const char* SENSOR_STATE_PATT 	= "recruitment/ciot/state";		//!< Sensor State
+const char* SENSOR_VALUE_PATT 	= "recruitment/ciot/sensor1";	//!< Sensor measurement
+const char* SENSOR_WAKEUP_PATT 	= "recruitment/ciot/wake";		//!< Sensor trigger wakeup 
 
 // sensor status response
 const char* SENSOR_STATUS_SLEEP = "sleep";
@@ -34,18 +34,18 @@ typedef struct SensorStatus
 
 }SensorStatus;
 
-SensorStatus gSensorHistory[GRAPH_BARS_NUM];//!< Collection of sensor's status 
+SensorStatus gSensorHistory[GRAPH_BARS_NUM];	//!< Collection of sensor's status 
 
-static unsigned int currentStatusIdx = 0; 		//!< Index of the last status introduced in the history collection
-static unsigned int history_size 	 = 0;
-static bool isNewMeasurementStored   = true;
+static unsigned int gCurrentStatusIdx 	= 0; 		//!< Index of the most recent status introduced in the history collection
+static unsigned int gHistorySize 	 	= 0;		//!< Capacity of the status history collection
+static bool mIsNewMeasurementStored   	= true;	//!< Flag that indicate if there is a new measurement in the history collection
 
 
-void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
+int  main(int, char**);
 void log_result(const char * subject, int resultCode);
+void message_callback(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);
 void connect_callback(struct mosquitto *mosq, void *userdata, int result);
 void draw(SDL_Renderer* renderer, float delta_time);
-int  main(int, char**);
 void wakeup_sensor(struct mosquitto *mosq);
 void store_new_measurement( SensorStatus & newStatus );
 SensorStatus & get_measurement( unsigned int posIndex );
@@ -54,13 +54,13 @@ int  get_history_measurement_size();
 
 int  get_history_measurement_size()
 {
-	return history_size;
+	return gHistorySize;
 }
 
 bool is_new_measurement_stored()
 {
-	bool isThereNewData = isNewMeasurementStored;
-	isNewMeasurementStored = false;
+	bool isThereNewData = mIsNewMeasurementStored;
+	mIsNewMeasurementStored = false;
 
 	return isThereNewData;
 }
@@ -68,18 +68,18 @@ bool is_new_measurement_stored()
 void store_new_measurement( SensorStatus & newStatus)
 {
 	
-	if( history_size < GRAPH_BARS_NUM)
-		history_size++;
+	if( gHistorySize < GRAPH_BARS_NUM)
+		gHistorySize++;
 
 	// control circular buffer
-	currentStatusIdx++;
-	if( currentStatusIdx >= GRAPH_BARS_NUM)
+	if( gCurrentStatusIdx >= GRAPH_BARS_NUM)
 	{
-		currentStatusIdx = 0;
+		gCurrentStatusIdx = 0;
 	}
 		
-	gSensorHistory[currentStatusIdx] = newStatus;
-	isNewMeasurementStored = true;
+	gSensorHistory[gCurrentStatusIdx] = newStatus;
+	gCurrentStatusIdx++;
+	mIsNewMeasurementStored = true;
 }
 
 SensorStatus & get_measurement( int posIndex )
@@ -88,20 +88,29 @@ SensorStatus & get_measurement( int posIndex )
 
 	if( posIndex < 0 || posIndex >= GRAPH_BARS_NUM)
 	{
-		std::cout << "Error" << std::endl;
+		std::cout << "Error idx not in history" << std::endl;
 	}
 	else
 	{
 		// control circular buffer
-		targetIdx = currentStatusIdx - posIndex;
+		targetIdx = (gCurrentStatusIdx -1) - posIndex;
 
 		if( targetIdx < 0 )
 		{
-			targetIdx = GRAPH_BARS_NUM - targetIdx ;
+			targetIdx = GRAPH_BARS_NUM - abs(targetIdx) ;
 		}
 	}
+	
+	std::cout << "---------req:" << posIndex << "t:" << targetIdx << std::endl;
+	
+	for (int i = 0; i < GRAPH_BARS_NUM; i++)
+	{
+		const char * idxPointer = (i == gCurrentStatusIdx) ? "<i" : "" ;
+		const char * idxTarget  = (i == targetIdx) ? " <t" : "" ;
+		std::cout << "id:" << i << ":" << gSensorHistory[i].value << idxPointer << idxTarget << std::endl;				
+	}
 
-	//std::cout << currentStatusIdx << "-" << posIndex << "=" << targetIdx << std::endl;
+	//std::cout << gCurrentStatusIdx << "-" << posIndex << "=" << targetIdx << std::endl;
 
 	return gSensorHistory[ targetIdx ];
 }
@@ -110,16 +119,17 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 {
 	SensorStatus sensor;
 
-	//Simply print the data to standard out.
 	if(message->payloadlen > 0 && message->payload != 0)
 	{
 		if( strcmp( message->topic, SENSOR_VALUE_PATT) == 0 )
 		{						
+			// message with a new sensor measurement
+
 			unsigned int bufferSize = message->payloadlen;
 			char* pCharIdx;
 			char buffer[bufferSize];
 
-			// copy payload and replace comma by white space
+			// copy the payload to buffer and replace comma by white space
 			for( int i = 0; i < bufferSize; i++ )
 			{
 				buffer[i] = ((const char*)message->payload)[i];
@@ -129,17 +139,26 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 					buffer[i] = ' '; // replace the comma
 				} 
 			}
-			//std::cout << "The buffer: " << (const char*)buffer << std::endl;
 			
 			sensor.timestamp 	= strtol( buffer, &pCharIdx, 10 );
 			sensor.value 		= strtof( pCharIdx, NULL);	
 
 			store_new_measurement( sensor );
-			std::cout << "Conversion: " << sensor.timestamp << " " << sensor.value << std::endl;
+		
+			//std::cout << "-------new:" << gCurrentStatusIdx << ":" << gSensorHistory[gCurrentStatusIdx -1].value << std::endl;				
+	
+			// for (int i = 0; i < GRAPH_BARS_NUM; i++)
+			// {
+			// 	std::cout << "id:" << i << ":" << gSensorHistory[i].value << std::endl;				
+			// }
+
+			//std::cout << "Conversion: " << sensor.timestamp << " " << sensor.value << std::endl;
 			
-		}
+		} 
 		else if(strcmp( message->topic, SENSOR_STATE_PATT) == 0 )
 		{
+			// message with a new sensor status
+
 			if( strcmp( (const char*)message->payload, SENSOR_STATUS_SLEEP ) == 0)
 			{
 				std::cout << "The sensor is sleeping" << std::endl;
@@ -153,10 +172,8 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 		}
 
 		//Data is binary, but we cast it to a string because we're crazy.
-		std::cout << message->topic << ":" << (const char*)message->payload << std::endl;
-		//std::cout << "raw message: " << (const char*)message->payload << std::endl;
-	}
-	
+		//std::cout << message->topic << ":" << (const char*)message->payload << std::endl;
+	}	
 }
 
 void log_result(const char * subject, int resultCode)
@@ -186,11 +203,10 @@ void connect_callback(struct mosquitto *mosq, void *userdata, int result)
 		//Subscribe to broker information topics on successful connect.
 	
 		int res = mosquitto_subscribe(mosq, NULL, SENSOR_STATE_PATT, 2);
-		log_result( "Connected to sensor state: ", res );
+		log_result( "Connected to sensor's state: ", res );
 
 		res = mosquitto_subscribe(mosq, NULL, SENSOR_VALUE_PATT, 2);
-		log_result( "Connected to sensor value: ", res );
-
+		log_result( "Connected to sensor's measurement: ", res );
 	}
 }
 
@@ -198,16 +214,9 @@ void wakeup_sensor(struct mosquitto *mosq)
 {
 	int payloadlen  = 1;
 	int qos 		= 2;
-	bool retain		= true; // yes, retain the msg on the broker
+	bool retain		= true;
 
-	int res = mosquitto_publish(mosq, 
-								NULL, 
-								SENSOR_WAKEUP_PATT, 
-								payloadlen, 
-								"1",
-								qos, 
-								retain 
-							  	);
+	int res = mosquitto_publish(mosq, NULL,	SENSOR_WAKEUP_PATT,	payloadlen, "1", qos, retain );
 	log_result( "Waking up sensor...", res );
 }
 
@@ -228,29 +237,44 @@ void draw(SDL_Renderer* renderer, float delta_time)
 	time += delta_time;
 
 	SDL_SetRenderDrawColor(renderer, cRed, cGreen, cBlue , cAlpha );
-	SDL_Rect rect = {100, 240, 600, 120};
+	SDL_Rect rect = {100, 240, 600, 200};
 
 	//Background
 	SDL_RenderFillRect(renderer, &rect);
 
-
 	//Bars
 	int padding = 2;
 	int start_x = 120;
-	int y = 340;
+	int y 		= 340;
 	int width = (rect.w - (start_x - rect.x) * 2 - padding * (GRAPH_BARS_NUM - 1))/GRAPH_BARS_NUM;
-
-	//Draw the bars with a simple sine-wave modulation on height and transparency.
-	cRed 	= 0xFF;
-	cGreen 	= 0xFF;
-	cBlue	= 0xFF;
 
 	for (int i = 0; i < GRAPH_BARS_NUM; i++)
 	{
+		// only draw if there is information available
+		if ( i  >= get_history_measurement_size() ) 
+			break;			
+
 		//float offset = ((float)sin(time * 4 + i) + 1.0f)/2.f;
 		SensorStatus sensor = get_measurement(i);
+		
+		// set a color for positive and negative values
+		if( sensor.value < 0 )
+		{
+			cRed   = 0xFF;
+			cGreen = 0X00;
+			cBlue  = 0X00;
+		}
+		else
+		{
+			cRed   = 0x00;
+			cGreen = 0xFF;
+			cBlue  = 0X00;
+		}
+
 		float offset = sensor.value;
-		int height = offset * 20 + 20;
+		int height = offset * 40;
+
+		// start drawing from the right to left
 		start_x = 120 + (GRAPH_BARS_NUM -1 - i)*(padding + width);
 
 		SDL_Rect bar = {start_x, y - height, width, height};
@@ -259,18 +283,9 @@ void draw(SDL_Renderer* renderer, float delta_time)
 		cAlpha = (unsigned char)((255 / GRAPH_BARS_NUM) * (GRAPH_BARS_NUM - i) );
 		SDL_SetRenderDrawColor(renderer, cRed, cGreen, cBlue, cAlpha);
 		SDL_RenderFillRect(renderer, &bar);
-
-		if ( i  < get_history_measurement_size() )
-		{
-			// only draw if there is information available
-			//start_x += (GRAPH_BARS_NUM - i)*(padding + width);
-		}
-		else
-		{
-			break;
-		}
-
+		//std::cout << "sqr:" << i << ":" << sensor.value << std::endl;
 	}
+	//std::cout << "-----------" << std::endl;
 }
 
 int main(int, char**)
