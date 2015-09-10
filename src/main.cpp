@@ -36,8 +36,8 @@ typedef struct SensorStatus
 
 SensorStatus gSensorHistory[GRAPH_BARS_NUM];	//!< Collection of sensor's status 
 
-static unsigned int gCurrentStatusIdx 	= 0; 		//!< Index of the most recent status introduced in the history collection
-static unsigned int gHistorySize 	 	= 0;		//!< Capacity of the status history collection
+static unsigned int gCurrentStatusIdx 	= 0; 	//!< Index of the most recent status introduced in the history collection
+static unsigned int gHistorySize 	 	= 0;	//!< Capacity of the status history collection
 static bool mIsNewMeasurementStored   	= true;	//!< Flag that indicate if there is a new measurement in the history collection
 
 
@@ -100,17 +100,6 @@ SensorStatus & get_measurement( int posIndex )
 			targetIdx = GRAPH_BARS_NUM - abs(targetIdx) ;
 		}
 	}
-	
-	std::cout << "---------req:" << posIndex << "t:" << targetIdx << std::endl;
-	
-	for (int i = 0; i < GRAPH_BARS_NUM; i++)
-	{
-		const char * idxPointer = (i == gCurrentStatusIdx) ? "<i" : "" ;
-		const char * idxTarget  = (i == targetIdx) ? " <t" : "" ;
-		std::cout << "id:" << i << ":" << gSensorHistory[i].value << idxPointer << idxTarget << std::endl;				
-	}
-
-	//std::cout << gCurrentStatusIdx << "-" << posIndex << "=" << targetIdx << std::endl;
 
 	return gSensorHistory[ targetIdx ];
 }
@@ -144,16 +133,6 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 			sensor.value 		= strtof( pCharIdx, NULL);	
 
 			store_new_measurement( sensor );
-		
-			//std::cout << "-------new:" << gCurrentStatusIdx << ":" << gSensorHistory[gCurrentStatusIdx -1].value << std::endl;				
-	
-			// for (int i = 0; i < GRAPH_BARS_NUM; i++)
-			// {
-			// 	std::cout << "id:" << i << ":" << gSensorHistory[i].value << std::endl;				
-			// }
-
-			//std::cout << "Conversion: " << sensor.timestamp << " " << sensor.value << std::endl;
-			
 		} 
 		else if(strcmp( message->topic, SENSOR_STATE_PATT) == 0 )
 		{
@@ -170,9 +149,6 @@ void message_callback(struct mosquitto *mosq, void *userdata, const struct mosqu
 				sensor.isAwaken = true;
 			}
 		}
-
-		//Data is binary, but we cast it to a string because we're crazy.
-		//std::cout << message->topic << ":" << (const char*)message->payload << std::endl;
 	}	
 }
 
@@ -283,9 +259,7 @@ void draw(SDL_Renderer* renderer, float delta_time)
 		cAlpha = (unsigned char)((255 / GRAPH_BARS_NUM) * (GRAPH_BARS_NUM - i) );
 		SDL_SetRenderDrawColor(renderer, cRed, cGreen, cBlue, cAlpha);
 		SDL_RenderFillRect(renderer, &bar);
-		//std::cout << "sqr:" << i << ":" << sensor.value << std::endl;
 	}
-	//std::cout << "-----------" << std::endl;
 }
 
 int main(int, char**)
