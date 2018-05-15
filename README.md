@@ -1,3 +1,8 @@
+<a href="https://scan.coverity.com/projects/snake-sanders-sanders-sld">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/15762/badge.svg"/>
+</a>
+
 # SDL Skeleton
 This a simple SDL2 skeleton that compiles on OSX and Ubuntu. It provides a simple comon base for a programming excerise in C++ to be sent to potential hires. 
 
